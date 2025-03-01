@@ -1,12 +1,56 @@
-# React + Vite
+# 🎧 WIBE — Музыкальный стриминговый сервис
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Добро пожаловать в **WIBE** — веб-приложение для потокового прослушивания музыки. Здесь вы можете находить новые треки, создавать собственные плейлисты и наслаждаться любимыми композициями в любое время.
 
-Currently, two official plugins are available:
+## 🚀 WIBE
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+![Логотип WIBE](./public/assets/img/logo/logo.png)
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🔥 Основные функции
+
+- 🎵 Потоковое воспроизведение треков через **Jamendo API**  
+- 🔍 Удобный поиск музыки по жанрам, исполнителям и трекам  
+- ❤️ Добавление треков в избранное  
+- 📂 Создание и управление персональными плейлистами  
+- 🌐 Современный и адаптивный интерфейс на **React** и **TailwindCSS**  
+
+---
+
+## 🛠️ Технологии
+
+- ⚡ **Vite** — Быстрая среда для сборки React-приложений  
+- ⚛️ **React** — Фронтенд-фреймворк  
+- 🎨 **TailwindCSS** — Стилизация  
+- 🔥 **Firebase** — Бэкенд и хранение данных  
+- 📡 **Jamendo API** — Получение музыкальных треков  
+
+---
+
+## 📥 Установка и запуск
+
+```bash
+# Клонируем репозиторий
+git clone https://github.com/c0nical/wibe.git
+
+# Переходим в папку проекта
+cd wibe
+
+# Устанавливаем зависимости
+npm install
+
+# Запуск в режиме разработки
+npm run dev
+```
+
+---
+
+## 📦 Сборка проекта
+
+```bash
+npm run build
+```
+
+После сборки файлы будут находиться в папке `dist/`. Их можно развернуть на любом статическом хостинге.
+
