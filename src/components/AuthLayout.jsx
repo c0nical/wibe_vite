@@ -15,9 +15,9 @@ const AuthLayout = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <div className="flex flex-col items-center justify-center align-center text-center">
+          <div className="flex flex-col items-center justify-center align-center text-center gap-5">
           <p className="text-nowrap">Найди свой</p>
-          <p className="text-green-500">WIBE</p>
+          <p className="text-green-500">wibe</p>
           </div>
         </motion.div>
 
@@ -51,7 +51,7 @@ const AuthLayout = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <div className="flex flex-col items-center justify-center align-center text-center">
+          <div className="flex flex-col items-center justify-center align-center text-center gap-5">
           <p className="text-nowrap">Погрузись в</p>
           <p className="text-green-500">музыку</p>
           </div>
