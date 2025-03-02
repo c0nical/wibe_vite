@@ -22,7 +22,7 @@ const AuthLayout = () => {
         </motion.div>
 
         {/* Центральный контейнер с формой */}
-        <div className="relative bg-white/15 p-8 border border-white/10 backdrop-blur-xs rounded-lg 
+        <div className="relative bg-white/10 p-8 border border-white/10 backdrop-blur-xs rounded-lg 
                       shadow-[0_0_75px_rgba(255,255,255,0.1)] min-h-[780px]
                       before:absolute before:inset-0 before:-z-10 
                       before:rounded-lg before:bg-white/10 before:blur-xl before:opacity-50

@@ -1,40 +1,41 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactPlayer from "react-player";
-import { FaVolumeUp, FaVolumeMute, FaHeart, FaRegHeart } from "react-icons/fa"; // Добавляем иконки для избранного
-import { db, auth } from '../firebase'; // Импортируем Firebase
-import { collection, addDoc, query, where, getDocs } from "firebase/firestore"; // Импортируем методы для работы с Firestore
+import { FaVolumeUp, FaVolumeMute, FaHeart, FaRegHeart } from "react-icons/fa";
+import { BiSkipPrevious, BiPlay, BiPause, BiSkipNext } from "react-icons/bi";
+import { db, auth } from "../firebase";
+import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
 
 const SidebarPlayer = ({ currentTrack, onPlayPause, onNext, onPrevious, isPlaying }) => {
     const [playedTime, setPlayedTime] = useState(0);
     const [duration, setDuration] = useState(0);
-    const [volume, setVolume] = useState(0.5);
-    const [isVolumeSliderVisible, setIsVolumeSliderVisible] = useState(false);
-    const [isFavorite, setIsFavorite] = useState(false); // Состояние для отслеживания избранного
+    const [volume, setVolume] = useState(() => {
+        return parseFloat(localStorage.getItem("playerVolume")) || 0.5;
+    });
+    const [prevVolume, setPrevVolume] = useState(volume);
+    const [isFavorite, setIsFavorite] = useState(false);
     const playerRef = useRef(null);
 
     useEffect(() => {
-        // Сбрасываем состояние избранного при смене трека
         if (currentTrack) {
             checkIfFavorite(currentTrack.id);
         }
-    }, [currentTrack]); // Зависимость от текущего трека
+    }, [currentTrack]);
+
+    useEffect(() => {
+        localStorage.setItem("playerVolume", volume);
+    }, [volume]);
 
     const checkIfFavorite = async (trackId) => {
         const user = auth.currentUser;
         if (user) {
             try {
-                // Проверим, если трек уже добавлен в избранное
                 const q = query(
                     collection(db, "favorites"),
                     where("userId", "==", user.uid),
-                    where("trackId", "==", trackId) // Проверяем, добавлен ли этот трек
+                    where("trackId", "==", trackId)
                 );
                 const querySnapshot = await getDocs(q);
-                if (!querySnapshot.empty) {
-                    setIsFavorite(true); // Если трек найден, значит он в избранном
-                } else {
-                    setIsFavorite(false); // Если нет, сбрасываем состояние
-                }
+                setIsFavorite(!querySnapshot.empty);
             } catch (error) {
                 console.error("Ошибка при проверке избранного:", error);
             }
@@ -60,13 +61,13 @@ const SidebarPlayer = ({ currentTrack, onPlayPause, onNext, onPrevious, isPlayin
         }
     };
 
-    const handleVolumeChange = (e) => {
-        const newVolume = parseFloat(e.target.value);
-        setVolume(newVolume);
-    };
-
-    const toggleVolumeSlider = () => {
-        setIsVolumeSliderVisible((prev) => !prev);
+    const toggleMute = () => {
+        if (volume > 0) {
+            setPrevVolume(volume);
+            setVolume(0);
+        } else {
+            setVolume(prevVolume);
+        }
     };
 
     const formatTime = (seconds) => {
@@ -76,42 +77,38 @@ const SidebarPlayer = ({ currentTrack, onPlayPause, onNext, onPrevious, isPlayin
     };
 
     const handleFavoriteClick = async () => {
-      const user = auth.currentUser;
-      if (user) {
-          try {
-              const q = query(
-                  collection(db, "favorites"),
-                  where("userId", "==", user.uid),
-                  where("trackId", "==", currentTrack.id) // проверяем по id трека
-              );
-              const querySnapshot = await getDocs(q);
-              if (querySnapshot.empty) {
-                  // Если трек еще не добавлен, добавляем его в избранное
-                  const favoriteData = {
-                      userId: user.uid,
-                      trackId: currentTrack.id,
-                      trackName: currentTrack.name,
-                      trackArtist: currentTrack.artist_name,
-                      trackUrl: currentTrack.audio,
-                      albumImage: currentTrack.album_image,
-                      artistName: currentTrack.artist_name, // Добавляем имя исполнителя
-                      duration: currentTrack.duration, // Добавляем длительность трека
-                  };
-                  await addDoc(collection(db, "favorites"), favoriteData);
-                  setIsFavorite(true); // Обновляем состояние на "добавлено"
-              } else {
-                  // Если трек уже есть в избранном, удаляем его
-                  // Тут можно добавить логику для удаления, если нужно
-                  setIsFavorite(false); // Убираем из избранного
-              }
-          } catch (error) {
-              console.error("Ошибка при добавлении в избранное:", error);
-          }
-      } else {
-          console.log("Пользователь не авторизован");
-      }
-  };
-  
+        const user = auth.currentUser;
+        if (user) {
+            try {
+                const q = query(
+                    collection(db, "favorites"),
+                    where("userId", "==", user.uid),
+                    where("trackId", "==", currentTrack.id)
+                );
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    const favoriteData = {
+                        userId: user.uid,
+                        trackId: currentTrack.id,
+                        trackName: currentTrack.name,
+                        trackArtist: currentTrack.artist_name,
+                        trackUrl: currentTrack.audio,
+                        albumImage: currentTrack.album_image,
+                        artistName: currentTrack.artist_name,
+                        duration: currentTrack.duration,
+                    };
+                    await addDoc(collection(db, "favorites"), favoriteData);
+                    setIsFavorite(true);
+                } else {
+                    setIsFavorite(false);
+                }
+            } catch (error) {
+                console.error("Ошибка при добавлении в избранное:", error);
+            }
+        } else {
+            console.log("Пользователь не авторизован");
+        }
+    };
 
     return (
         <div className="bg-[#272727] p-8 flex flex-col items-center">
@@ -127,7 +124,7 @@ const SidebarPlayer = ({ currentTrack, onPlayPause, onNext, onPrevious, isPlayin
 
                     <div className="mb-2 text-center">
                         <h2 className="text-xl font-semibold">{currentTrack.name}</h2>
-                        <p className="text-sm text-gray-400"> {currentTrack.artist_name}</p>
+                        <p className="text-sm text-gray-400">{currentTrack.artist_name}</p>
                     </div>
 
                     <div className="w-full my-4">
@@ -143,7 +140,6 @@ const SidebarPlayer = ({ currentTrack, onPlayPause, onNext, onPrevious, isPlayin
                             onDuration={handleDuration}
                         />
 
-                        {/* Прогресс-бар */}
                         <div
                             className="relative w-full h-2 bg-gray-600 rounded-full cursor-pointer"
                             onClick={handleProgressBarClick}
@@ -160,54 +156,36 @@ const SidebarPlayer = ({ currentTrack, onPlayPause, onNext, onPrevious, isPlayin
                     </div>
 
                     {/* Регулятор громкости */}
-                    <div className="relative flex items-center mt-4">
-                        <button
-                            className="text-xl text-gray-400 hover:text-white"
-                            onClick={toggleVolumeSlider}
-                        >
+                    <div className="relative flex items-center mt-4 space-x-2">
+                        <button className="text-xl text-gray-400 hover:text-white" onClick={toggleMute}>
                             {volume > 0 ? <FaVolumeUp /> : <FaVolumeMute />}
                         </button>
 
-                        {isVolumeSliderVisible && (
-                            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-700 p-2 rounded shadow-lg">
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="1"
-                                    step="0.01"
-                                    value={volume}
-                                    onChange={handleVolumeChange}
-                                    className="w-32"
-                                />
-                            </div>
-                        )}
+                        <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={volume}
+                            onChange={(e) => setVolume(parseFloat(e.target.value))}
+                            className="w-32"
+                        />
                     </div>
 
                     <div className="flex justify-around items-center w-full mt-4">
-                        {/* Кнопка "Предыдущий трек" */}
                         <button onClick={onPrevious} className="text-3xl text-gray-400 hover:text-white">
-                            <i className="bi bi-skip-start-fill"></i> {/* Иконка предыдущего трека */}
+                            <BiSkipPrevious />
                         </button>
 
-                        {/* Кнопка "Плей/Пауза" */}
-                        <button
-                            onClick={onPlayPause}
-                            className="text-3xl px-4 py-2 text-gray-400 hover:text-white flex items-center"
-                        >
-                            {isPlaying ? (
-                                <i className="bi bi-pause-fill"></i> // Иконка паузы
-                            ) : (
-                                <i className="bi bi-play-fill"></i> // Иконка воспроизведения
-                            )}
+                        <button onClick={onPlayPause} className="text-3xl px-4 py-2 text-gray-400 hover:text-white flex items-center">
+                            {isPlaying ? <BiPause /> : <BiPlay />}
                         </button>
 
-                        {/* Кнопка "Следующий трек" */}
                         <button onClick={onNext} className="text-3xl text-gray-400 hover:text-white">
-                            <i className="bi bi-skip-end-fill"></i> {/* Иконка следующего трека */}
+                            <BiSkipNext />
                         </button>
                     </div>
 
-                    {/* Кнопка "Добавить в избранное" с визуальным откликом */}
                     <button
                         onClick={handleFavoriteClick}
                         className={`text-xl text-gray-400 hover:text-white mt-4 ${isFavorite ? "text-red-500" : ""}`}
