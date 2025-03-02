@@ -15,7 +15,7 @@ const AuthLayout = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <div className="flex flex-col items-center justify-center align-center text-center gap-5">
+          <div className="flex flex-col items-center justify-center align-center text-center gap-5 select-none">
           <p className="text-nowrap">Найди свой</p>
           <p className="text-green-500">wibe</p>
           </div>
@@ -28,10 +28,10 @@ const AuthLayout = () => {
                       before:rounded-lg before:bg-white/10 before:blur-xl before:opacity-50
                       w-full max-w-md min-h-[500px] transition-all duration-300 overflow-hidden flex flex-col">
           <div className="flex flex-1 align-center justify-center p-4">
-            <div className="flex flex-1 align-center items-start justify-center p-6">
+            <div className="flex flex-1 align-center items-start justify-center p-6 select-none">
               <motion.img
                 src="/assets/img/logo/logo.png"
-                className="w-42 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                className="w-42 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] pointer-events-none"
                 alt="Logo"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -51,7 +51,7 @@ const AuthLayout = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <div className="flex flex-col items-center justify-center align-center text-center gap-5">
+          <div className="flex flex-col items-center justify-center align-center text-center gap-5 select-none">
           <p className="text-nowrap">Погрузись в</p>
           <p className="text-green-500">музыку</p>
           </div>

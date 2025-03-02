@@ -43,7 +43,7 @@ const Header = () => {
     <header className="flex justify-between items-center bg-[#0F0F0F] p-4 shadow-md">
       <div className="flex gap-6">
         {/* Используем относительный путь для логотипа */}
-        <img src="/assets/img/logo/logo.svg" className="w-12" alt="Logo" />
+        <img src="/assets/img/logo/logo.svg" onClick={() => navigate("/")} className="w-12 cursor-pointer" alt="Logo" />
         <div className="relative">
           <input
             type="text"
@@ -72,7 +72,9 @@ const Header = () => {
 
 const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlaying }) => {
   const location = useLocation();
-  const [hoverPos, setHoverPos] = useState(null);
+  const [hoverPos, setHoverPos] = useState({ top: 0, isVisible: false }); // Инициализация с default значениями
+
+  
 
   useEffect(() => {
     const hideHover = setTimeout(() => setHoverPos(null), 2000);
@@ -84,57 +86,62 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#1C1C1C] text-white overflow-hidden">
-      <Header />
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {user && (
-          <aside className="w-64 bg-[#2E2E2E] h-full flex-shrink-0 overflow-y-auto relative">
-            <nav className="p-4 relative">
-              <div
-                className="absolute bg-neutral-600 transition-all duration-300 rounded"
-                style={{
-                  width: "calc(100% - 2rem)",
-                  height: "40px",
-                  top: hoverPos?.top || 0,
-                  left: "1rem",
-                  opacity: hoverPos ? 1 : 0,
-                }}
-              ></div>
-              {[
-                { path: "/home", label: "Главная" },
-                { path: "/library", label: "Библиотека" },
-                { path: "/favorites", label: "Избранное" },
-              ].map((item, index) => (
-                <Link
-                  key={index}
-                  to={item.path}
-                  className="block relative px-4 py-2 rounded mt-2 hover:outline hover:outline-2 hover:outline-neutral-500"
-                  onMouseEnter={(e) => setHoverPos({ top: e.target.offsetTop })}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-            <SidebarPlayer
-              currentTrack={currentTrack}
-              isPlaying={isPlaying}
-              onPlayPause={() => setIsPlaying(!isPlaying)}
-            />
-          </aside>
-        )}
-        <main className="flex-1 p-6 overflow-y-auto bg-[#1C1C1C]">
-          <Routes>
-            <Route element={<ProtectedRoute user={user} />}>
-              <Route path="/home" element={<Home setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} />} />
-              <Route path="/library" element={<Library />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/favorites" element={<Favorites setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} />} />
-              <Route path="/search" element={<SearchResults />} />
-            </Route>
-          </Routes>
-        </main>
-      </div>
-    </div>
+<div className="h-screen flex flex-col bg-[#1C1C1C] text-white overflow-hidden">
+  <Header />
+  <div className="flex flex-1 min-h-0 overflow-hidden">
+    {user && (
+      <aside className="w-64 bg-[#2E2E2E] h-full flex-shrink-0 overflow-y-auto relative">
+        <nav className="p-4 relative">
+          <div
+            className="absolute bg-neutral-600 transition-all duration-300 rounded"
+            style={{
+              width: "calc(100% - 2rem)",
+              height: "40px",
+              top: hoverPos?.top || 0, // Используем optional chaining для безопасности
+              left: "1rem",
+              opacity: hoverPos?.isVisible ? 1 : 0, // Используем optional chaining
+            }}
+          ></div>
+          {[
+            { path: "/home", label: "Главная" },
+            { path: "/library", label: "Библиотека" },
+            { path: "/favorites", label: "Избранное" },
+          ].map((item, index) => (
+            <Link
+              key={index}
+              to={item.path}
+              className="block relative px-4 py-2 rounded mt-2 hover:outline hover:outline-2 hover:outline-neutral-500"
+              onMouseEnter={(e) =>
+                setHoverPos({ top: e.target.offsetTop, isVisible: true }) // Устанавливаем top и isVisible
+              }
+              onMouseLeave={() =>
+                setHoverPos((prev) => ({ ...prev, isVisible: false })) // Сохраняем top, но скрываем элемент
+              }
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <SidebarPlayer
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          onPlayPause={() => setIsPlaying(!isPlaying)}
+        />
+      </aside>
+    )}
+    <main className="flex-1 p-6 overflow-y-auto bg-[#1C1C1C]">
+      <Routes>
+        <Route element={<ProtectedRoute user={user} />}>
+          <Route path="/home" element={<Home setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/favorites" element={<Favorites setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} />} />
+          <Route path="/search" element={<SearchResults />} />
+        </Route>
+      </Routes>
+    </main>
+  </div>
+</div>
   );
 };
 
