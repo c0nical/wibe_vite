@@ -4,6 +4,7 @@ import Skeleton from "react-loading-skeleton";
 import { SkeletonTheme } from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import FeaturedTracks from "./FeaturedTracks";
 
 const categories = [
   { title: "Новинки", params: { order: "releasedate" } },
@@ -17,6 +18,12 @@ const TrackList = ({ setCurrentTrack, setIsPlaying, currentTrack, isPlaying }) =
     <SkeletonTheme baseColor="#4F4F4F" highlightColor="#A6A6A6">
       <div className="text-white">
         <h1 className="text-3xl font-bold mb-6">Главная</h1>
+        <FeaturedTracks
+          setCurrentTrack={setCurrentTrack}
+          setIsPlaying={setIsPlaying}
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+        />
         {categories.map((category, index) => (
           <TrackCategory
             key={index}
