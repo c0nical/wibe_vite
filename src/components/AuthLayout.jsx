@@ -17,7 +17,7 @@ const AuthLayout = () => {
         >
           <div className="flex flex-col items-center justify-center align-center text-center gap-5 select-none">
           <p className="text-nowrap">Найди свой</p>
-          <p className="text-green-500">wibe</p>
+          <p className="text-black text-stroke">wibe</p>
           </div>
         </motion.div>
 
@@ -53,7 +53,7 @@ const AuthLayout = () => {
         >
           <div className="flex flex-col items-center justify-center align-center text-center gap-5 select-none">
           <p className="text-nowrap">Погрузись в</p>
-          <p className="text-green-500">музыку</p>
+          <p className="text-black text-stroke">музыку</p>
           </div>
         </motion.div>
       </div>

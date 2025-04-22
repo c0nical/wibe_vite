@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, Component } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from "react-router-dom";
 import SidebarPlayer from "./components/SidebarPlayer";
 import Home from "./pages/Home";
@@ -11,21 +11,63 @@ import Profile from "./pages/Profile";
 import TitlePage from "./pages/TitlePage";
 import Favorites from "./pages/Favorites";
 import SearchResults from "./pages/SearchResults";
-import { FaSearch, FaBars } from "react-icons/fa";
-import { BiPlay, BiPause } from "react-icons/bi";
+import Toast from "./components/Toast";
+import { Search, Menu, Heart, ListPlus } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { auth } from "./firebase";
+import { auth, db } from "./firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+import { getPlaylists, addTrackToPlaylist } from "./components/firestoreService";
+import { collection, query, where, getDocs, addDoc, deleteDoc } from "firebase/firestore";
 
 function Loader() {
   return (
-    <div className="h-screen flex items-center justify-center bg-[#1C1C1C] text-white">
-      <p className="text-xl">Загрузка...</p>
-    </div>
+    <motion.div
+      className="h-screen flex items-center justify-center bg-[#1C1C1C] text-white"
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <motion.div
+        className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+      />
+    </motion.div>
   );
 }
 
-const MiniPlayer = ({ currentTrack, isPlaying, onPlayPause, onOpenFullPlayer }) => {
+class ErrorBoundary extends Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen flex items-center justify-center bg-[#1C1C1C] text-white">
+          <div className="text-center">
+            <h1 className="text-2xl mb-4">Что-то пошло не так 😔</h1>
+            <p>{this.state.error?.message || "Неизвестная ошибка"}</p>
+            <button
+              className="mt-4 bg-green-500 px-4 py-2 rounded hover:bg-green-600"
+              onClick={() => window.location.reload()}
+            >
+              Перезагрузить
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const MiniPlayer = ({ currentTrack, isPlaying, setIsPlaying, onOpenFullPlayer }) => {
   if (!currentTrack) return null;
 
   return (
@@ -50,14 +92,224 @@ const MiniPlayer = ({ currentTrack, isPlaying, onPlayPause, onOpenFullPlayer }) 
       <motion.button
         onClick={(e) => {
           e.stopPropagation();
-          onPlayPause();
+          setIsPlaying(!isPlaying);
         }}
         className="text-white"
         animate={isPlaying ? { scale: [1, 1.1, 1] } : { scale: 1 }}
         transition={isPlaying ? { repeat: Infinity, duration: 1 } : {}}
       >
-        {isPlaying ? <BiPause size={50} /> : <BiPlay size={50} />}
+        {isPlaying ? <Pause size={50} /> : <Play size={50} />}
       </motion.button>
+    </motion.div>
+  );
+};
+
+const MobilePlayerModal = ({
+  currentTrack,
+  isPlaying,
+  setIsPlaying,
+  playNextTrack,
+  playPreviousTrack,
+  onClose,
+  playedTime,
+  duration,
+  setPlayedTime,
+  handleProgressBarClick,
+  playerRef,
+  showToast,
+}) => {
+  const [favorites, setFavorites] = useState([]);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [playlists, setPlaylists] = useState([]);
+  const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
+  const user = auth.currentUser;
+
+  useEffect(() => {
+    const fetchFavoritesAndPlaylists = async () => {
+      if (user) {
+        try {
+          // Загрузка избранного
+          const q = query(collection(db, "favorites"), where("userId", "==", user.uid));
+          const querySnapshot = await getDocs(q);
+          setFavorites(querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+          // Загрузка плейлистов
+          const playlistData = await getPlaylists(user.uid);
+          setPlaylists(playlistData);
+        } catch (error) {
+          showToast("Ошибка загрузки данных!");
+        }
+      }
+    };
+    fetchFavoritesAndPlaylists();
+  }, [user, showToast]);
+
+  const handleFavoriteClick = async (e) => {
+    e.stopPropagation();
+    if (!user) {
+      showToast("Авторизуйтесь, чтобы добавить в избранное!");
+      return;
+    }
+    try {
+      const q = query(
+        collection(db, "favorites"),
+        where("userId", "==", user.uid),
+        where("trackId", "==", currentTrack.id)
+      );
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        const favoriteData = {
+          userId: user.uid,
+          trackId: currentTrack.id,
+          trackName: currentTrack.name,
+          trackArtist: currentTrack.artist_name,
+          trackUrl: currentTrack.audio,
+          albumImage: currentTrack.album_image,
+          artistName: currentTrack.artist_name,
+          duration: currentTrack.duration,
+        };
+        const docRef = await addDoc(collection(db, "favorites"), favoriteData);
+        setFavorites([...favorites, { id: docRef.id, ...favoriteData }]);
+        showToast("Трек добавлен в избранное!");
+      } else {
+        querySnapshot.forEach(async (doc) => {
+          await deleteDoc(doc.ref);
+        });
+        setFavorites(favorites.filter((f) => f.trackId !== currentTrack.id));
+        showToast("Трек удалён из избранного!");
+      }
+    } catch (error) {
+      console.error("Ошибка при добавлении/удалении в избранное:", error);
+      showToast("Ошибка при работе с избранным!");
+    }
+  };
+
+  const handleAddToPlaylist = async (playlistId) => {
+    if (!user) {
+      showToast("Авторизуйтесь, чтобы добавить в плейлист!");
+      return;
+    }
+    if (!currentTrack) {
+      showToast("Трек не выбран!");
+      return;
+    }
+    try {
+      await addTrackToPlaylist(user.uid, playlistId, currentTrack);
+      showToast("Трек добавлен в плейлист!");
+      setShowPlaylistMenu(false);
+    } catch (error) {
+      showToast("Ошибка при добавлении в плейлист!");
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
+  };
+
+  if (!currentTrack) return null;
+
+  const isFavorite = favorites.some((f) => f.trackId === currentTrack?.id);
+
+  return (
+    <motion.div
+      className="bg-[#272727] p-4 m-4 rounded-lg w-full max-w-md"
+      initial={{ y: "100%" }}
+      animate={{ y: 0 }}
+      exit={{ y: "100%" }}
+      transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
+    >
+      <div className="flex flex-col items-center">
+        <div className="relative">
+          {isBuffering ? (
+            <Skeleton width={128} height={128} borderRadius={8} />
+          ) : (
+            <img
+              src={currentTrack.album_image}
+              alt={currentTrack.album_name}
+              className="w-32 h-32 object-cover rounded-lg mb-4"
+            />
+          )}
+        </div>
+        <div className="mb-2 text-center">
+          <h2 className="text-xl font-semibold">{currentTrack.name}</h2>
+          <p className="text-sm text-gray-400">{currentTrack.artist_name}</p>
+        </div>
+        <div className="w-full my-4">
+          <div
+            className="relative w-full h-2 bg-gray-600 rounded-full cursor-pointer"
+            onClick={(e) => handleProgressBarClick(e, playerRef)}
+          >
+            <div
+              className="absolute top-0 left-0 h-2 bg-green-500 rounded-full"
+              style={{ width: `${(playedTime / duration) * 100 || 0}%` }}
+            ></div>
+          </div>
+          <div className="flex justify-between text-sm text-gray-400 mt-1">
+            <span>{formatTime(playedTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
+        </div>
+        <div className="flex justify-around items-center w-full mt-4">
+          <button
+            onClick={playPreviousTrack}
+            className="text-3xl text-gray-400 hover:text-white"
+          >
+            <SkipBack />
+          </button>
+          <button
+            onClick={() => setIsPlaying(!isPlaying)}
+            className="text-3xl px-4 py-2 text-gray-400 hover:text-white flex items-center"
+          >
+            {isPlaying ? <Pause /> : <Play />}
+          </button>
+          <button
+            onClick={playNextTrack}
+            className="text-3xl text-gray-400 hover:text-white"
+          >
+            <SkipForward />
+          </button>
+        </div>
+        <div className="flex gap-4 mt-4">
+          <button
+            onClick={handleFavoriteClick}
+            className={`text-xl text-gray-400 hover:text-white ${isFavorite ? "text-red-500" : ""}`}
+          >
+            <Heart fill={isFavorite ? "red" : "none"} />
+          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowPlaylistMenu(!showPlaylistMenu)}
+              className="text-xl text-gray-400 hover:text-white"
+            >
+              <ListPlus />
+            </button>
+            {showPlaylistMenu && (
+              <div className="absolute bottom-8 left-0 bg-neutral-700 rounded shadow-lg z-10">
+                {playlists.length > 0 ? (
+                  playlists.map((playlist) => (
+                    <button
+                      key={playlist.id}
+                      className="block px-4 py-2 text-white hover:bg-neutral-600 w-full text-left"
+                      onClick={() => handleAddToPlaylist(playlist.id)}
+                    >
+                      {playlist.name}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-4 py-2 text-gray-400">Нет плейлистов</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        <button
+          className="mt-4 text-white bg-red-500 px-4 py-2 rounded w-full"
+          onClick={onClose}
+        >
+          Закрыть
+        </button>
+      </div>
     </motion.div>
   );
 };
@@ -80,38 +332,48 @@ const Header = ({ setIsMenuOpen }) => {
 
   return (
     <header className="flex justify-between items-center bg-[#0F0F0F] p-4 shadow-md relative">
-      <div className="flex gap-6 items-center">
+      <div className="flex items-center gap-8 w-full">
         <img src="/assets/img/logo/logo.svg" onClick={() => navigate("/")} className="w-12 cursor-pointer" alt="Logo" />
-        <div className="relative">
+        <div className="relative flex-1 max-w-[600px]">
           <input
             type="text"
             placeholder="Поиск"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="pl-10 pr-4 py-2 rounded bg-neutral-700 text-white focus:outline-none w-64"
+            className="w-full pl-10 pr-10 py-2 rounded bg-neutral-700 text-white focus:outline-none"
           />
           <button
             onClick={handleSearch}
             className="absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400 hover:text-green-500"
           >
-            <FaSearch size={18} />
+            <Search size={18} />
           </button>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400 hover:text-red-500"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-4">
-        <button className="md:hidden text-white" onClick={() => setIsMenuOpen(true)}>
-          <FaBars size={24} />
+        <button className="md:hidden text-white mr-8" onClick={() => setIsMenuOpen(true)}>
+          <Menu size={24} />
         </button>
-        <Link to="/profile" className="bg-gray-700 px-4 py-2 rounded hover:bg-gray-600 hidden md:block">
-          Личный кабинет
+        <Link to="/profile" className="hidden md:flex bg-gray-700 p-2 rounded hover:bg-gray-600">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
         </Link>
       </div>
     </header>
   );
 };
 
-const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlaying }) => {
+const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlaying, playNextTrack, playPreviousTrack, setCurrentCategoryTracks, playedTime, setPlayedTime, duration, setDuration, handleProgressBarClick, playerRef, showToast }) => {
   const location = useLocation();
   const [hoverPos, setHoverPos] = useState({ top: 0, isVisible: false });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -121,9 +383,6 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
     const hideHover = setTimeout(() => setHoverPos(null), 2000);
     return () => clearTimeout(hideHover);
   }, [hoverPos]);
-
-  const onNext = () => console.log("Next track");
-  const onPrevious = () => console.log("Previous track");
 
   if (["/", "/login", "/signup"].includes(location.pathname)) {
     return null;
@@ -165,91 +424,109 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
             <SidebarPlayer
               currentTrack={currentTrack}
               isPlaying={isPlaying}
-              onPlayPause={() => setIsPlaying(!isPlaying)}
-              onNext={onNext}
-              onPrevious={onPrevious}
+              setIsPlaying={setIsPlaying}
+              playNextTrack={playNextTrack}
+              playPreviousTrack={playPreviousTrack}
+              setPlayedTime={setPlayedTime}
+              playedTime={playedTime}
+              duration={duration}
+              setDuration={setDuration}
+              handleProgressBarClick={handleProgressBarClick}
+              playerRef={playerRef}
+              showToast={showToast}
             />
           </aside>
         )}
         <main className="flex-1 p-6 overflow-y-auto bg-gradient-to-b from-[#1a1a1a] to-[#000000]">
           <Routes>
             <Route element={<ProtectedRoute user={user} />}>
-              <Route path="/home" element={<Home setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} />} />
-              <Route path="/library" element={<Library />} />
+              <Route path="/home" element={<Home setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
+              <Route path="/library" element={<Library setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/favorites" element={<Favorites setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} />} />
-              <Route path="/search" element={<SearchResults />} />
+              <Route path="/favorites" element={<Favorites setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
+              <Route path="/search" element={<SearchResults setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
             </Route>
           </Routes>
         </main>
       </div>
 
       {isMenuOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden">
-          <div className="bg-[#2E2E2E] w-64 h-full p-4">
-            <button className="text-white mb-4" onClick={() => setIsMenuOpen(false)}>
-              Закрыть
-            </button>
-            {[
-              { path: "/home", label: "Главная" },
-              { path: "/library", label: "Библиотека" },
-              { path: "/favorites", label: "Избранное" },
-              { path: "/profile", label: "Личный кабинет" },
-            ].map((item, index) => (
-              <Link
-                key={index}
-                to={item.path}
-                className="block px-4 py-2 text-white hover:bg-neutral-600 rounded"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <MiniPlayer
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        onPlayPause={() => setIsPlaying(!isPlaying)}
-        onOpenFullPlayer={() => setIsPlayerOpen(true)}
-      />
-
-{/* Полный плеер в модалке снизу */}
-<AnimatePresence>
-      {isPlayerOpen && (
         <motion.div
-          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center"
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
           <motion.div
-            className="bg-[#272727] p-4 m-4 rounded-lg w-full max-w-md"
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
+            className="bg-gradient-to-b from-[#2E2E2E] to-[#1C1C1C] w-64 h-full p-4"
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ duration: 0.3 }}
           >
-            <SidebarPlayer
-              currentTrack={currentTrack}
-              isPlaying={isPlaying}
-              onPlayPause={() => setIsPlaying(!isPlaying)}
-              onNext={onNext}
-              onPrevious={onPrevious}
-            />
             <button
-              className="mt-4 text-white bg-red-500 px-4 py-2 rounded w-full"
-              onClick={() => setIsPlayerOpen(false)}
+              className="text-white mb-4 flex items-center gap-2 hover:text-green-500"
+              onClick={() => setIsMenuOpen(false)}
             >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
               Закрыть
             </button>
+            {[
+              { path: "/home", label: "Главная", icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
+              { path: "/library", label: "Библиотека", icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg> },
+              { path: "/favorites", label: "Избранное", icon: <Heart className="w-5 h-5" /> },
+              { path: "/profile", label: "Личный кабинет", icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
+            ].map((item, index) => (
+              <Link
+                key={index}
+                to={item.path}
+                className="flex items-center gap-2 px-4 py-2 text-white hover:bg-neutral-600 rounded transition duration-200"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {item.icon}
+                {item.label}
+              </Link>
+            ))}
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+
+      <MiniPlayer
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        setIsPlaying={setIsPlaying}
+        onOpenFullPlayer={() => setIsPlayerOpen(true)}
+      />
+
+      <AnimatePresence>
+        {isPlayerOpen && (
+          <motion.div
+            className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <MobilePlayerModal
+              currentTrack={currentTrack}
+              isPlaying={isPlaying}
+              setIsPlaying={setIsPlaying}
+              playNextTrack={playNextTrack}
+              playPreviousTrack={playPreviousTrack}
+              onClose={() => setIsPlayerOpen(false)}
+              playedTime={playedTime}
+              duration={duration}
+              setPlayedTime={setPlayedTime}
+              handleProgressBarClick={handleProgressBarClick}
+              playerRef={playerRef}
+              showToast={showToast}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -257,23 +534,101 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
 function App() {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentCategoryTracks, setCurrentCategoryTracks] = useState([]);
+  const [playedTime, setPlayedTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [user, loading] = useAuthState(auth);
+  const [toast, setToast] = useState({ message: "", isVisible: false });
+  const playerRef = useRef(null);
+
+  const showToast = (message) => {
+    setToast({ message, isVisible: true });
+    setTimeout(() => setToast({ message: "", isVisible: false }), 3000);
+  };
+
+  const handleProgressBarClick = (e, playerRef) => {
+    const progressBar = e.currentTarget;
+    const clickPositionX = e.nativeEvent.offsetX;
+    const progressBarWidth = progressBar.offsetWidth;
+    const newPlayedTime = (clickPositionX / progressBarWidth) * duration;
+    setPlayedTime(newPlayedTime);
+    if (playerRef.current) {
+      playerRef.current.seekTo(newPlayedTime / duration, "fraction");
+    }
+  };
+
+  const playNextTrack = () => {
+    console.log("playNextTrack called, currentCategoryTracks:", currentCategoryTracks);
+    if (!currentTrack || !currentCategoryTracks.length) {
+      console.log("No currentTrack or empty currentCategoryTracks");
+      return;
+    }
+    const currentIndex = currentCategoryTracks.findIndex((t) => t.id === currentTrack.id);
+    console.log("Current index:", currentIndex);
+    if (currentIndex < currentCategoryTracks.length - 1) {
+      const nextTrack = currentCategoryTracks[currentIndex + 1];
+      console.log("Switching to next track:", nextTrack);
+      setCurrentTrack(nextTrack);
+      setIsPlaying(true);
+    } else {
+      console.log("No next track available");
+    }
+  };
+
+  const playPreviousTrack = () => {
+    console.log("playPreviousTrack called, currentCategoryTracks:", currentCategoryTracks);
+    if (!currentTrack || !currentCategoryTracks.length) {
+      console.log("No currentTrack or empty currentCategoryTracks");
+      return;
+    }
+    const currentIndex = currentCategoryTracks.findIndex((t) => t.id === currentTrack.id);
+    console.log("Current index:", currentIndex);
+    if (currentIndex > 0) {
+      const prevTrack = currentCategoryTracks[currentIndex - 1];
+      console.log("Switching to previous track:", prevTrack);
+      setCurrentTrack(prevTrack);
+      setIsPlaying(true);
+    } else {
+      console.log("No previous track available");
+    }
+  };
 
   if (loading) return <Loader />;
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={!user ? <TitlePage /> : <Navigate to="/home" replace />} />
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={user ? <Navigate to="/home" replace /> : <Login />} />
-          <Route path="/signup" element={user ? <Navigate to="/home" replace /> : <SignUp />} />
-        </Route>
-        <Route
-          path="/*"
-          element={<AppLayout user={user} currentTrack={currentTrack} setCurrentTrack={setCurrentTrack} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />}
-        />
-      </Routes>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <ErrorBoundary>
+        <Toast message={toast.message} isVisible={toast.isVisible} onClose={() => setToast({ message: "", isVisible: false })} />
+        <Routes>
+          <Route path="/" element={!user ? <TitlePage /> : <Navigate to="/home" replace />} />
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={user ? <Navigate to="/home" replace /> : <Login />} />
+            <Route path="/signup" element={user ? <Navigate to="/home" replace /> : <SignUp />} />
+          </Route>
+          <Route
+            path="/*"
+            element={
+              <AppLayout
+                user={user}
+                currentTrack={currentTrack}
+                setCurrentTrack={setCurrentTrack}
+                isPlaying={isPlaying}
+                setIsPlaying={setIsPlaying}
+                playNextTrack={playNextTrack}
+                playPreviousTrack={playPreviousTrack}
+                setCurrentCategoryTracks={setCurrentCategoryTracks}
+                playedTime={playedTime}
+                setPlayedTime={setPlayedTime}
+                duration={duration}
+                setDuration={setDuration}
+                handleProgressBarClick={handleProgressBarClick}
+                playerRef={playerRef}
+                showToast={showToast}
+              />
+            }
+          />
+        </Routes>
+      </ErrorBoundary>
     </Router>
   );
 }

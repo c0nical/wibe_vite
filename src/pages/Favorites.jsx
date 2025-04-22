@@ -1,39 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { db, auth } from "../firebase";
 import { collection, query, where, getDocs, deleteDoc, doc } from "firebase/firestore";
-import { FaTrashAlt, FaHeart } from "react-icons/fa";
-import ReactPlayer from "react-player";
+import { Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
+import Skeleton from "react-loading-skeleton";
+import { SkeletonTheme } from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
-const Favorites = ({ setCurrentTrack, setIsPlaying, currentTrack, isPlaying }) => {
-
-    const handlePlayTrack = (track) => {
-        // Приводим объект трека к ожидаемому формату
-        const formattedTrack = {
-          id: track.trackId, // Используем trackId, так как это оригинальный ID трека
-          name: track.trackName, // Переименовываем trackName в name
-          artist_name: track.artistName, // Переименовываем artistName в artist_name
-          audio: track.trackUrl, // Переименовываем trackUrl в audio
-          album_image: track.albumImage, // Переименовываем albumImage в album_image
-          duration: track.duration, // Поле duration уже совпадает
-        };
-      
-        console.log("Форматированный трек:", formattedTrack); // Проверь результат
-      
-        if (currentTrack?.id === formattedTrack.id && isPlaying) {
-          setIsPlaying(false);
-        } else {
-          setCurrentTrack(formattedTrack);
-          setIsPlaying(true);
-        }
-      };
-
-  const formatDuration = (durationInSeconds) => {
-    const minutes = Math.floor(durationInSeconds / 60);
-    const seconds = durationInSeconds % 60;
-    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-  };
-
+const Favorites = ({ setCurrentTrack, setIsPlaying, setCurrentCategoryTracks, showToast }) => {
   const [favorites, setFavorites] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchFavorites = async () => {
@@ -49,94 +25,108 @@ const Favorites = ({ setCurrentTrack, setIsPlaying, currentTrack, isPlaying }) =
           ...doc.data(),
         }));
         setFavorites(favoriteTracks);
+        setLoading(false);
       }
     };
-
     fetchFavorites();
   }, []);
 
-  const handleRemoveFavorite = async (trackId) => {
+  const handlePlayTrack = (track) => {
+    const formattedTrack = {
+      id: track.trackId,
+      name: track.trackName,
+      artist_name: track.artistName,
+      audio: track.trackUrl,
+      album_image: track.albumImage,
+      duration: track.duration,
+    };
+    console.log("Форматированный трек:", formattedTrack);
+    setCurrentTrack(formattedTrack);
+    setIsPlaying(true);
+    setCurrentCategoryTracks(favorites.map((t) => ({
+      id: t.trackId,
+      name: t.trackName,
+      artist_name: t.artistName,
+      audio: t.trackUrl,
+      album_image: t.albumImage,
+      duration: t.duration,
+    })));
+  };
+
+  const handleRemoveFavorite = async (trackId, e) => {
+    e.stopPropagation();
     const user = auth.currentUser;
     if (user) {
       const docRef = doc(db, "favorites", trackId);
       await deleteDoc(docRef);
-      setFavorites(favorites.filter((track) => track.id !== trackId)); // Обновляем состояние после удаления
+      setFavorites(favorites.filter((track) => track.id !== trackId));
+      showToast("Трек удалён из избранного!");
     }
   };
 
+  const formatDuration = (durationInSeconds) => {
+    const minutes = Math.floor(durationInSeconds / 60);
+    const seconds = durationInSeconds % 60;
+    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+  };
+
   return (
-    <div className="container mx-auto">
-      <div className="flex flex-row items-center pb-4">
-        <div className="flex p-5 rounded-lg bg-pink-600">
-          <FaHeart size={32} />
-        </div>
-        <h1 className="text-2xl font-semibold px-4">Ваши избранные треки</h1>
-      </div>
-
-      {favorites.length === 0 ? (
-        <p>У вас нет избранных треков.</p>
-      ) : (
-        <div className="bg-inherit rounded-lg py-4">
-          <div className="grid grid-cols-10 gap-4 text-sm text-neutral-300 font-bold mb-4">
-            <span className="col-span-1 text-center border-r-2 border-neutral-500">Фото</span>
-            <span className="col-span-4 border-r-2 border-neutral-500">Название</span>
-            <span className="col-span-2 border-r-2 border-neutral-500">Автор</span>
-            <span className="col-span-2 border-r-2 border-neutral-500">Длительность</span>
-            <span className="col-span-1 text-center">Удалить</span>
+    <SkeletonTheme baseColor="#4F4F4F" highlightColor="#A6A6A6">
+      <div className="text-white p-4">
+        <h1 className="text-3xl font-bold mb-6">Избранное</h1>
+        {loading ? (
+          <div className="space-y-4">
+            {Array(4)
+              .fill()
+              .map((_, index) => (
+                <div key={index} className="flex items-center gap-4">
+                  <Skeleton width={64} height={64} borderRadius={8} />
+                  <div className="flex-1">
+                    <Skeleton width={200} height={20} />
+                    <Skeleton width={150} height={15} className="mt-2" />
+                  </div>
+                  <Skeleton width={40} height={20} />
+                </div>
+              ))}
           </div>
-
-          <div>
+        ) : favorites.length === 0 ? (
+          <p className="text-gray-400">Нет избранных треков</p>
+        ) : (
+          <div className="space-y-4">
             {favorites.map((track) => (
-              <div 
-                key={track.id} 
-                className="grid grid-cols-10 gap-4 items-center rounded-lg border-neutral-600 py-3 hover:bg-neutral-700 cursor-pointer"
-                onClick={() => handlePlayTrack(track)} // Обработчик клика для воспроизведения
+              <motion.div
+                key={track.id}
+                className="flex items-center gap-4 bg-neutral-800 p-4 rounded-lg shadow-md hover:bg-neutral-700 transition cursor-pointer"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handlePlayTrack(track)}
               >
-                <div className="col-span-1 flex justify-center">
+                {track.albumImage ? (
                   <img
                     src={track.albumImage}
                     alt={track.trackName}
-                    className="w-12 h-12 object-cover rounded"
+                    className="w-16 h-16 object-cover rounded-lg"
                   />
+                ) : (
+                  <div className="w-16 h-16 bg-gray-600 rounded-lg"></div>
+                )}
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold">{track.trackName}</h3>
+                  <p className="text-sm text-gray-400">{track.artistName}</p>
                 </div>
-
-                <div className="col-span-4 flex flex-col">
-                  <span className="font-semibold text-lg">{track.trackName}</span>
-                </div>
-
-                <div className="col-span-2 text-neutral-400">{track.artistName}</div>
-                <div className="col-span-2 text-sm text-neutral-400">{formatDuration(track.duration)}</div>
-
-                <div className="col-span-1 flex justify-center">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation(); // Чтобы не срабатывал onClick на весь блок
-                      handleRemoveFavorite(track.id);
-                    }}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <FaTrashAlt />
-                  </button>
-                </div>
-              </div>
+                <p className="text-sm text-gray-400">{formatDuration(track.duration)}</p>
+                <button
+                  onClick={(e) => handleRemoveFavorite(track.id, e)}
+                  className="text-xl text-red-500 hover:text-white"
+                >
+                  <Trash2 />
+                </button>
+              </motion.div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Вставляем компонент ReactPlayer для воспроизведения текущего трека */}
-      {currentTrack && (
-        <div className="player-container">
-          <ReactPlayer
-            url={currentTrack.trackUrl} // Передаем URL трека
-            playing={isPlaying}          // Устанавливаем, играем ли мы
-            controls={true}              // Показываем контролы
-            width="100%"                 // Ширина плеера
-            height="50px"                // Высота плеера
-          />
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </SkeletonTheme>
   );
 };
 
