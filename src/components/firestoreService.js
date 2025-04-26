@@ -1,6 +1,9 @@
+// firestoreService.js
 import { db } from "../firebase";
 import { doc, setDoc, deleteDoc, getDoc, collection, addDoc, updateDoc, arrayUnion, arrayRemove, getDocs } from "firebase/firestore";
+import axios from "axios";
 
+// Переключение трека в избранном
 export const toggleFavoriteTrack = async (userId, track) => {
   if (!userId) {
     throw new Error("Пользователь не авторизован");
@@ -14,6 +17,18 @@ export const toggleFavoriteTrack = async (userId, track) => {
       console.log(`Трек ${track.name} удалён из избранного`);
       return false;
     } else {
+      const response = await axios.get("https://api.jamendo.com/v3.0/tracks/", {
+        params: {
+          client_id: import.meta.env.VITE_JAMENDO_API_KEY,
+          format: "json",
+          id: track.id,
+          include: "musicinfo", // Используем musicinfo для жанров
+        },
+      });
+      console.log("Jamendo API response (firestoreService):", response.data);
+      const trackData = response.data.results[0];
+      const genres = trackData?.musicinfo?.tags || [];
+
       await setDoc(trackRef, {
         id: track.id,
         name: track.name,
@@ -21,8 +36,9 @@ export const toggleFavoriteTrack = async (userId, track) => {
         audio: track.audio,
         album_image: track.album_image,
         duration: track.duration,
+        genres,
       });
-      console.log(`Трек ${track.name} добавлен в избранное`);
+      console.log(`Трек ${track.name} добавлен в избранное с жанрами:`, genres);
       return true;
     }
   } catch (error) {
@@ -31,6 +47,7 @@ export const toggleFavoriteTrack = async (userId, track) => {
   }
 };
 
+// Создание плейлиста
 export const createPlaylist = async (userId, playlistName) => {
   if (!userId) {
     throw new Error("Пользователь не авторизован");
@@ -53,6 +70,7 @@ export const createPlaylist = async (userId, playlistName) => {
   }
 };
 
+// Добавление трека в плейлист
 export const addTrackToPlaylist = async (userId, playlistId, track) => {
   if (!userId || !playlistId) {
     throw new Error("Пользователь или плейлист не указан");
@@ -77,6 +95,7 @@ export const addTrackToPlaylist = async (userId, playlistId, track) => {
   }
 };
 
+// Удаление трека из плейлиста
 export const removeTrackFromPlaylist = async (userId, playlistId, trackId) => {
   if (!userId || !playlistId || !trackId) {
     throw new Error("Пользователь, плейлист или трек не указан");
@@ -100,6 +119,7 @@ export const removeTrackFromPlaylist = async (userId, playlistId, trackId) => {
   }
 };
 
+// Получение списка плейлистов
 export const getPlaylists = async (userId) => {
   if (!userId) {
     throw new Error("Пользователь не авторизован");
@@ -119,6 +139,7 @@ export const getPlaylists = async (userId) => {
   }
 };
 
+// Удаление плейлиста
 export const deletePlaylist = async (userId, playlistId) => {
   if (!userId || !playlistId) {
     throw new Error("Пользователь или плейлист не указан");

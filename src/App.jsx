@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, Component } from "react";
+// App.jsx
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from "react-router-dom";
 import SidebarPlayer from "./components/SidebarPlayer";
 import Home from "./pages/Home";
@@ -22,6 +23,7 @@ import "react-loading-skeleton/dist/skeleton.css";
 import { getPlaylists, addTrackToPlaylist } from "./components/firestoreService";
 import { collection, query, where, getDocs, addDoc, deleteDoc } from "firebase/firestore";
 
+// Компоненты Loader, ErrorBoundary, MiniPlayer, MobilePlayerModal, Header остаются без изменений
 function Loader() {
   return (
     <motion.div
@@ -39,7 +41,7 @@ function Loader() {
   );
 }
 
-class ErrorBoundary extends Component {
+class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
 
   static getDerivedStateFromError(error) {
@@ -450,50 +452,6 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
         </main>
       </div>
 
-      {isMenuOpen && (
-        <motion.div
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <motion.div
-            className="bg-gradient-to-b from-[#2E2E2E] to-[#1C1C1C] w-64 h-full p-4"
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ duration: 0.3 }}
-          >
-            <button
-              className="text-white mb-4 flex items-center gap-2 hover:text-green-500"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Закрыть
-            </button>
-            {[
-              { path: "/home", label: "Главная", icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
-              { path: "/library", label: "Библиотека", icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg> },
-              { path: "/favorites", label: "Избранное", icon: <Heart className="w-5 h-5" /> },
-              { path: "/profile", label: "Личный кабинет", icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
-            ].map((item, index) => (
-              <Link
-                key={index}
-                to={item.path}
-                className="flex items-center gap-2 px-4 py-2 text-white hover:bg-neutral-600 rounded transition duration-200"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            ))}
-          </motion.div>
-        </motion.div>
-      )}
-
       <MiniPlayer
         currentTrack={currentTrack}
         isPlaying={isPlaying}
@@ -541,10 +499,10 @@ function App() {
   const [toast, setToast] = useState({ message: "", isVisible: false });
   const playerRef = useRef(null);
 
-  const showToast = (message) => {
+  const showToast = useCallback((message) => {
     setToast({ message, isVisible: true });
     setTimeout(() => setToast({ message: "", isVisible: false }), 3000);
-  };
+  }, []); // Пустой массив зависимостей, так как setToast не меняется
 
   const handleProgressBarClick = (e, playerRef) => {
     const progressBar = e.currentTarget;

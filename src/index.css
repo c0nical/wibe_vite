@@ -38,3 +38,37 @@ html, body {
     -webkit-text-stroke: 4px black;
   }
 }
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #4F4F4F #1F1F1F;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #1F1F1F;
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #4F4F4F;
+  border-radius: 2px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #22C55E; /* Зелёный акцент для ховера */
+}
+
+/* Общие стили для корректной работы */
+* {
+  box-sizing: border-box;
+}
+
+/* Убираем дефолтный скроллбар в Firefox */
+.custom-scrollbar {
+  -ms-overflow-style: none;
+}

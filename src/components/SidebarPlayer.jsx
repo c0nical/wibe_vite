@@ -1,3 +1,4 @@
+// SidebarPlayer.jsx
 import React, { useState, useEffect, useRef } from "react";
 import ReactPlayer from "react-player";
 import { Volume2, VolumeX, Heart, ListPlus } from "lucide-react";
@@ -8,6 +9,7 @@ import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import { collection, query, where, getDocs, addDoc, deleteDoc } from "firebase/firestore";
 import { getPlaylists, addTrackToPlaylist } from "./firestoreService";
+import axios from "axios";
 
 const SidebarPlayer = ({
   currentTrack,
@@ -33,15 +35,14 @@ const SidebarPlayer = ({
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
   const user = auth.currentUser;
 
+  // Загружаем избранное и плейлисты
   useEffect(() => {
     const fetchFavoritesAndPlaylists = async () => {
       if (user) {
         try {
-          // Загрузка избранного
           const q = query(collection(db, "favorites"), where("userId", "==", user.uid));
           const querySnapshot = await getDocs(q);
           setFavorites(querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-          // Загрузка плейлистов
           const playlistData = await getPlaylists(user.uid);
           setPlaylists(playlistData);
         } catch (error) {
@@ -52,6 +53,7 @@ const SidebarPlayer = ({
     fetchFavoritesAndPlaylists();
   }, [user, showToast]);
 
+  // Сохраняем громкость в localStorage
   useEffect(() => {
     localStorage.setItem("playerVolume", volume);
   }, [volume]);
@@ -79,6 +81,7 @@ const SidebarPlayer = ({
     return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
+  // Обработчик добавления/удаления трека в избранное
   const handleFavoriteClick = async (e) => {
     e.stopPropagation();
     if (!user) {
@@ -93,6 +96,18 @@ const SidebarPlayer = ({
       );
       const querySnapshot = await getDocs(q);
       if (querySnapshot.empty) {
+        const response = await axios.get("https://api.jamendo.com/v3.0/tracks/", {
+          params: {
+            client_id: import.meta.env.VITE_JAMENDO_API_KEY,
+            format: "json",
+            id: currentTrack.id,
+            include: "musicinfo", // Используем musicinfo для жанров
+          },
+        });
+        console.log("Jamendo API response (SidebarPlayer):", response.data);
+        const trackData = response.data.results[0];
+        const genres = trackData?.musicinfo?.tags || [];
+
         const favoriteData = {
           userId: user.uid,
           trackId: currentTrack.id,
@@ -102,6 +117,7 @@ const SidebarPlayer = ({
           albumImage: currentTrack.album_image,
           artistName: currentTrack.artist_name,
           duration: currentTrack.duration,
+          genres,
         };
         const docRef = await addDoc(collection(db, "favorites"), favoriteData);
         setFavorites([...favorites, { id: docRef.id, ...favoriteData }]);
@@ -119,6 +135,7 @@ const SidebarPlayer = ({
     }
   };
 
+  // Добавление трека в плейлист
   const handleAddToPlaylist = async (playlistId) => {
     if (!user) {
       showToast("Авторизуйтесь, чтобы добавить в плейлист!");
@@ -181,7 +198,6 @@ const SidebarPlayer = ({
                 showToast("Ошибка загрузки трека!");
               }}
             />
-
             <div
               className="relative w-full h-2 bg-gray-600 rounded-full cursor-pointer"
               onClick={(e) => handleProgressBarClick(e, playerRef)}
@@ -201,7 +217,6 @@ const SidebarPlayer = ({
             <button className="text-xl text-gray-400 hover:text-white" onClick={toggleMute}>
               {volume > 0 ? <Volume2 /> : <VolumeX />}
             </button>
-
             <input
               type="range"
               min="0"
@@ -220,14 +235,12 @@ const SidebarPlayer = ({
             >
               <SkipBack />
             </button>
-
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               className="text-3xl px-4 py-2 text-gray-400 hover:text-white flex items-center"
             >
               {isPlaying ? <Pause /> : <Play />}
             </button>
-
             <button
               onClick={playNextTrack}
               className="text-3xl text-gray-400 hover:text-white"
