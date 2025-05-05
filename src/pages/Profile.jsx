@@ -69,13 +69,13 @@ const Profile = () => {
       transition={{ duration: 0.5 }}
     >
       <h2 className="text-2xl font-bold mb-4">Личный кабинет</h2>
-      <div className="flex flex-col md:flex-row gap-6 mb-6">
-        <div className="flex items-center gap-4 bg-neutral-700 p-4 rounded-lg">
+      <div className="flex flex-col md:flex-row flex- gap-6 mb-6">
+        <div className="flex flex-col sm:flex-row items-center gap-4 bg-neutral-700 p-4 rounded-lg w-full">
           <img src={photoURL} alt="Аватар" className="w-24 h-24 rounded-lg" />
-          <div>
-            <h3 className="text-xl font-bold">{user.displayName || "Пользователь"}</h3>
-            <p className="text-neutral-400">{user.email}</p>
-            <p className="text-sm text-neutral-500">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xl font-bold truncate">{user.displayName || "Пользователь"}</h3>
+            <p className="text-neutral-400 truncate">{user.email}</p>
+            <p className="text-sm text-neutral-500 truncate">
               Зарегистрирован: {new Date(user.metadata.creationTime).toLocaleDateString()}
             </p>
           </div>

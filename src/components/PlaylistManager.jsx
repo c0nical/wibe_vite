@@ -174,29 +174,29 @@ const PlaylistManager = ({ setCurrentTrack, setIsPlaying, setCurrentCategoryTrac
                 {selectedPlaylist.tracks.map((track, index) => (
                   <motion.div
                     key={`${track.id}-${index}`}
-                    className="flex justify-between items-center bg-neutral-700 p-3 rounded-lg hover:bg-neutral-600 transition"
+                    className="flex justify-between items-center bg-neutral-700 p-2 sm:p-3 rounded-lg hover:bg-neutral-600 transition"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
                   >
                     <div
-                      className="flex items-center gap-4 cursor-pointer"
+                      className="flex items-center gap-4 cursor-pointer flex-1 min-w-0"
                       onClick={() => playTrack(track)}
                     >
                       <img
                         src={track.album_image}
                         alt={track.name}
-                        className="w-12 h-12 object-cover rounded"
+                        className="w-10 h-10 sm:w-12 sm:h-12 object-cover rounded"
                       />
-                      <div>
-                        <p className="text-white font-semibold">{track.name}</p>
-                        <p className="text-gray-400 text-sm">{track.artist_name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-semibold truncate">{track.name}</p>
+                        <p className="text-gray-400 text-sm truncate">{track.artist_name}</p>
                       </div>
                     </div>
                     <motion.button
                       onClick={() => handleDeleteTrackFromPlaylist(selectedPlaylist.id, track.id)}
-                      className="p-2 text-gray-400 hover:text-red-500"
+                      className="p-2 text-gray-400 hover:text-red-500 flex-shrink-0"
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                     >

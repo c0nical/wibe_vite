@@ -1,4 +1,3 @@
-// App.jsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from "react-router-dom";
 import SidebarPlayer from "./components/SidebarPlayer";
@@ -13,7 +12,7 @@ import TitlePage from "./pages/TitlePage";
 import Favorites from "./pages/Favorites";
 import SearchResults from "./pages/SearchResults";
 import Toast from "./components/Toast";
-import { Search, Menu, Heart, ListPlus } from "lucide-react";
+import { Search, Menu, Heart, ListPlus, Repeat, X } from "lucide-react";
 import { Play, Pause, SkipBack, SkipForward } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { auth, db } from "./firebase";
@@ -23,7 +22,6 @@ import "react-loading-skeleton/dist/skeleton.css";
 import { getPlaylists, addTrackToPlaylist } from "./components/firestoreService";
 import { collection, query, where, getDocs, addDoc, deleteDoc } from "firebase/firestore";
 
-// Компоненты Loader, ErrorBoundary, MiniPlayer, MobilePlayerModal, Header остаются без изменений
 function Loader() {
   return (
     <motion.div
@@ -69,11 +67,12 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const MiniPlayer = ({ currentTrack, isPlaying, setIsPlaying, onOpenFullPlayer }) => {
+const MiniPlayer = ({ currentTrack, isPlaying, setIsPlaying, onOpenFullPlayer, miniPlayerRef }) => {
   if (!currentTrack) return null;
 
   return (
     <motion.div
+      ref={miniPlayerRef}
       className="md:hidden fixed bottom-0 left-0 right-0 bg-[#272727] m-6 p-6 flex items-center rounded-lg space-x-4 cursor-pointer z-50"
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
@@ -119,6 +118,8 @@ const MobilePlayerModal = ({
   handleProgressBarClick,
   playerRef,
   showToast,
+  isLooping,
+  setIsLooping,
 }) => {
   const [favorites, setFavorites] = useState([]);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -130,11 +131,9 @@ const MobilePlayerModal = ({
     const fetchFavoritesAndPlaylists = async () => {
       if (user) {
         try {
-          // Загрузка избранного
           const q = query(collection(db, "favorites"), where("userId", "==", user.uid));
           const querySnapshot = await getDocs(q);
           setFavorites(querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-          // Загрузка плейлистов
           const playlistData = await getPlaylists(user.uid);
           setPlaylists(playlistData);
         } catch (error) {
@@ -239,11 +238,11 @@ const MobilePlayerModal = ({
         </div>
         <div className="w-full my-4">
           <div
-            className="relative w-full h-2 bg-gray-600 rounded-full cursor-pointer"
+            className="relative w-full h-2 bg-neutral-700 rounded-full cursor-pointer"
             onClick={(e) => handleProgressBarClick(e, playerRef)}
           >
             <div
-              className="absolute top-0 left-0 h-2 bg-green-500 rounded-full"
+              className="absolute top-0 left-0 h-2 bg-white rounded-full"
               style={{ width: `${(playedTime / duration) * 100 || 0}%` }}
             ></div>
           </div>
@@ -279,7 +278,7 @@ const MobilePlayerModal = ({
           >
             <Heart fill={isFavorite ? "red" : "none"} />
           </button>
-          <div className="relative">
+          <div className="relative flex">
             <button
               onClick={() => setShowPlaylistMenu(!showPlaylistMenu)}
               className="text-xl text-gray-400 hover:text-white"
@@ -304,6 +303,12 @@ const MobilePlayerModal = ({
               </div>
             )}
           </div>
+          <button
+            onClick={() => setIsLooping(!isLooping)}
+            className={`text-xl ${isLooping ? "text-green-500" : "text-gray-400"} hover:text-white`}
+          >
+            <Repeat />
+          </button>
         </div>
         <button
           className="mt-4 text-white bg-red-500 px-4 py-2 rounded w-full"
@@ -362,10 +367,14 @@ const Header = ({ setIsMenuOpen }) => {
         </div>
       </div>
       <div className="flex items-center gap-4">
-        <button className="md:hidden text-white mr-8" onClick={() => setIsMenuOpen(true)}>
+        <button
+          className="md:hidden text-white mr-8"
+          onClick={() => setIsMenuOpen(true)}
+          onTouchStart={() => setIsMenuOpen(true)}
+        >
           <Menu size={24} />
         </button>
-        <Link to="/profile" className="hidden md:flex bg-gray-700 p-2 rounded hover:bg-gray-600">
+        <Link to="/profile" className="hidden md:flex bg-neutral-700 p-2 rounded hover:bg-neutral-600">
           <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
@@ -375,23 +384,70 @@ const Header = ({ setIsMenuOpen }) => {
   );
 };
 
-const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlaying, playNextTrack, playPreviousTrack, setCurrentCategoryTracks, playedTime, setPlayedTime, duration, setDuration, handleProgressBarClick, playerRef, showToast }) => {
+const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlaying, playNextTrack, playPreviousTrack, setCurrentCategoryTracks, playedTime, setPlayedTime, duration, setDuration, handleProgressBarClick, playerRef, showToast, isLooping, setIsLooping }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [hoverPos, setHoverPos] = useState({ top: 0, isVisible: false });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const mobileMenuRef = useRef(null);
+  const miniPlayerRef = useRef(null);
 
   useEffect(() => {
     const hideHover = setTimeout(() => setHoverPos(null), 2000);
     return () => clearTimeout(hideHover);
   }, [hoverPos]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isAnimating) return;
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(event.target) &&
+        miniPlayerRef.current &&
+        !miniPlayerRef.current.contains(event.target)
+      ) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMenuOpen, isAnimating]);
+
+  useEffect(() => {
+    if (isMenuOpen) {
+      setIsAnimating(true);
+      const timer = setTimeout(() => setIsAnimating(false), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isMenuOpen]);
+
   if (["/", "/login", "/signup"].includes(location.pathname)) {
     return null;
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-b from-[#1a1a1a] to-[#000000] text-white overflow-hidden">
+    <div className="h-screen flex flex-col bg-transparent text-white overflow-hidden">
+      {/* Видео на фоне */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="fixed top-0 left-0 w-full h-full object-cover z-[-10]"
+        onError={(e) => console.error("Video error:", e.target.error)}
+        onLoadedData={() => console.log("Video loaded successfully")}
+      >
+        <source src="/videos/bg.webm" type="video/webm" />
+        <source src="/videos/bg.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+
       <Header setIsMenuOpen={setIsMenuOpen} />
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {user && (
@@ -436,10 +492,12 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
               handleProgressBarClick={handleProgressBarClick}
               playerRef={playerRef}
               showToast={showToast}
+              isLooping={isLooping}
+              setIsLooping={setIsLooping}
             />
           </aside>
         )}
-        <main className="flex-1 p-6 overflow-y-auto bg-gradient-to-b from-[#1a1a1a] to-[#000000]">
+        <main className="flex-1 p-6 overflow-y-auto bg-transparent">
           <Routes>
             <Route element={<ProtectedRoute user={user} />}>
               <Route path="/home" element={<Home setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
@@ -457,6 +515,7 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
         isPlaying={isPlaying}
         setIsPlaying={setIsPlaying}
         onOpenFullPlayer={() => setIsPlayerOpen(true)}
+        miniPlayerRef={miniPlayerRef}
       />
 
       <AnimatePresence>
@@ -481,7 +540,49 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
               handleProgressBarClick={handleProgressBarClick}
               playerRef={playerRef}
               showToast={showToast}
+              isLooping={isLooping}
+              setIsLooping={setIsLooping}
             />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            ref={mobileMenuRef}
+            className="md:hidden fixed inset-0 bg-[#2E2E2E] z-50 flex flex-col"
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <div className="flex justify-between items-center p-4 border-b border-neutral-700">
+              <img src="/assets/img/logo/logo.svg" className="w-12" alt="Logo" />
+              <button
+                onClick={() => setIsMenuOpen(false)}
+                className="text-white"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <nav className="flex flex-col p-4">
+              {[
+                { path: "/home", label: "Главная" },
+                { path: "/library", label: "Библиотека" },
+                { path: "/favorites", label: "Избранное" },
+                { path: "/profile", label: "Профиль" },
+              ].map((item, index) => (
+                <Link
+                  key={index}
+                  to={item.path}
+                  className="block px-4 py-2 text-lg hover:bg-neutral-600 rounded"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
           </motion.div>
         )}
       </AnimatePresence>
@@ -495,6 +596,7 @@ function App() {
   const [currentCategoryTracks, setCurrentCategoryTracks] = useState([]);
   const [playedTime, setPlayedTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isLooping, setIsLooping] = useState(false);
   const [user, loading] = useAuthState(auth);
   const [toast, setToast] = useState({ message: "", isVisible: false });
   const playerRef = useRef(null);
@@ -502,7 +604,7 @@ function App() {
   const showToast = useCallback((message) => {
     setToast({ message, isVisible: true });
     setTimeout(() => setToast({ message: "", isVisible: false }), 3000);
-  }, []); // Пустой массив зависимостей, так как setToast не меняется
+  }, []);
 
   const handleProgressBarClick = (e, playerRef) => {
     const progressBar = e.currentTarget;
@@ -582,6 +684,8 @@ function App() {
                 handleProgressBarClick={handleProgressBarClick}
                 playerRef={playerRef}
                 showToast={showToast}
+                isLooping={isLooping}
+                setIsLooping={setIsLooping}
               />
             }
           />

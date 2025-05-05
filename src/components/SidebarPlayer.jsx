@@ -1,7 +1,6 @@
-// SidebarPlayer.jsx
 import React, { useState, useEffect, useRef } from "react";
 import ReactPlayer from "react-player";
-import { Volume2, VolumeX, Heart, ListPlus } from "lucide-react";
+import { Volume2, VolumeX, Heart, ListPlus, Repeat } from "lucide-react";
 import { SkipBack, Play, Pause, SkipForward } from "lucide-react";
 import { auth, db } from "../firebase";
 import { motion } from "framer-motion";
@@ -24,6 +23,8 @@ const SidebarPlayer = ({
   handleProgressBarClick,
   playerRef,
   showToast,
+  isLooping,
+  setIsLooping,
 }) => {
   const [volume, setVolume] = useState(() => {
     return parseFloat(localStorage.getItem("playerVolume")) || 0.5;
@@ -35,7 +36,6 @@ const SidebarPlayer = ({
   const [showPlaylistMenu, setShowPlaylistMenu] = useState(false);
   const user = auth.currentUser;
 
-  // Загружаем избранное и плейлисты
   useEffect(() => {
     const fetchFavoritesAndPlaylists = async () => {
       if (user) {
@@ -53,7 +53,6 @@ const SidebarPlayer = ({
     fetchFavoritesAndPlaylists();
   }, [user, showToast]);
 
-  // Сохраняем громкость в localStorage
   useEffect(() => {
     localStorage.setItem("playerVolume", volume);
   }, [volume]);
@@ -64,6 +63,16 @@ const SidebarPlayer = ({
 
   const handleDuration = (dur) => {
     setDuration(dur);
+  };
+
+  const handleEnded = () => {
+    if (isLooping) {
+      setPlayedTime(0);
+      playerRef.current.seekTo(0);
+      setIsPlaying(true);
+    } else {
+      playNextTrack();
+    }
   };
 
   const toggleMute = () => {
@@ -81,7 +90,6 @@ const SidebarPlayer = ({
     return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  // Обработчик добавления/удаления трека в избранное
   const handleFavoriteClick = async (e) => {
     e.stopPropagation();
     if (!user) {
@@ -101,7 +109,7 @@ const SidebarPlayer = ({
             client_id: import.meta.env.VITE_JAMENDO_API_KEY,
             format: "json",
             id: currentTrack.id,
-            include: "musicinfo", // Используем musicinfo для жанров
+            include: "musicinfo",
           },
         });
         console.log("Jamendo API response (SidebarPlayer):", response.data);
@@ -135,7 +143,6 @@ const SidebarPlayer = ({
     }
   };
 
-  // Добавление трека в плейлист
   const handleAddToPlaylist = async (playlistId) => {
     if (!user) {
       showToast("Авторизуйтесь, чтобы добавить в плейлист!");
@@ -158,6 +165,89 @@ const SidebarPlayer = ({
 
   return (
     <div className="bg-[#272727] p-8 flex flex-col items-center">
+      <style>
+        {`
+          .custom-volume-slider {
+            -webkit-appearance: none;
+            width: 128px;
+            height: 6px;
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+          }
+
+          .custom-volume-slider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(
+              to right,
+              #FFFFFF 0%,
+              #FFFFFF ${volume * 100}%,
+              #4B4B4B ${volume * 100}%,
+              #4B4B4B 100%
+            );
+            border-radius: 3px;
+          }
+
+          .custom-volume-slider::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(
+              to right,
+              #FFFFFF 0%,
+              #FFFFFF ${volume * 100}%,
+              #4B4B4B ${volume * 100}%,
+              #4B4B4B 100%
+            );
+            border-radius: 3px;
+          }
+
+          .custom-volume-slider::-ms-track {
+            width: 100%;
+            height: 6px;
+            background: transparent;
+            border-color: transparent;
+            color: transparent;
+          }
+
+          .custom-volume-slider::-ms-fill-lower {
+            background: #FFFFFF;
+            border-radius: 3px;
+          }
+
+          .custom-volume-slider::-ms-fill-upper {
+            background: #4B4B4B;
+            border-radius: 3px;
+          }
+
+          .custom-volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #FFFFFF;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            margin-top: -4px;
+          }
+
+          .custom-volume-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: #FFFFFF;
+            border: none;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          }
+
+          .custom-volume-slider::-ms-thumb {
+            width: 14px;
+            height: 14px;
+            background: #FFFFFF;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          }
+        `}
+      </style>
       {currentTrack ? (
         <>
           <div className="relative">
@@ -192,6 +282,7 @@ const SidebarPlayer = ({
               onDuration={handleDuration}
               onBuffer={() => setIsBuffering(true)}
               onBufferEnd={() => setIsBuffering(false)}
+              onEnded={handleEnded}
               onError={(e) => {
                 console.error("Ошибка загрузки трека:", e);
                 setIsBuffering(false);
@@ -199,11 +290,11 @@ const SidebarPlayer = ({
               }}
             />
             <div
-              className="relative w-full h-2 bg-gray-600 rounded-full cursor-pointer"
+              className="relative w-full h-2 bg-neutral-700 rounded-full cursor-pointer"
               onClick={(e) => handleProgressBarClick(e, playerRef)}
             >
               <div
-                className="absolute top-0 left-0 h-2 bg-green-500 rounded-full"
+                className="absolute top-0 left-0 h-2 bg-white rounded-full"
                 style={{ width: `${(playedTime / duration) * 100 || 0}%` }}
               ></div>
             </div>
@@ -224,7 +315,7 @@ const SidebarPlayer = ({
               step="0.01"
               value={volume}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-32"
+              className="custom-volume-slider"
             />
           </div>
 
@@ -256,7 +347,7 @@ const SidebarPlayer = ({
             >
               <Heart fill={isFavorite ? "red" : "none"} />
             </button>
-            <div className="relative">
+            <div className="flex relative">
               <button
                 onClick={() => setShowPlaylistMenu(!showPlaylistMenu)}
                 className="text-xl text-gray-400 hover:text-white"
@@ -281,6 +372,12 @@ const SidebarPlayer = ({
                 </div>
               )}
             </div>
+            <button
+              onClick={() => setIsLooping(!isLooping)}
+              className={`text-xl ${isLooping ? "text-green-500" : "text-gray-400"} hover:text-white`}
+            >
+              <Repeat />
+            </button>
           </div>
         </>
       ) : (

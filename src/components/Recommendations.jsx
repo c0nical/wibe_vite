@@ -58,14 +58,19 @@ const Recommendations = ({
 
       const tracks = await getRecommendedTracks(user.uid, topGenres, newOffset, seed);
       console.log("Fetched recommended tracks:", tracks);
+
+      // Фильтруем новые треки, исключая уже существующие по track.id
+      const existingIds = new Set(recommendedTracks.map((track) => track.id));
+      const uniqueTracks = tracks.filter((track) => !existingIds.has(track.id));
+
       if (newOffset === 0) {
-        setRecommendedTracks(tracks);
+        setRecommendedTracks(uniqueTracks);
       } else {
-        setRecommendedTracks((prev) => [...prev, ...tracks]);
+        setRecommendedTracks((prev) => [...prev, ...uniqueTracks]);
       }
 
-      if (setCurrentCategoryTracks && tracks.length) {
-        setCurrentCategoryTracks(tracks);
+      if (setCurrentCategoryTracks && uniqueTracks.length) {
+        setCurrentCategoryTracks(uniqueTracks);
       }
     } catch (error) {
       console.error("Ошибка при загрузке рекомендаций:", error);
@@ -231,7 +236,7 @@ const Recommendations = ({
           {loading && recommendedTracks.length === 0 ? (
             Array(5)
               .fill()
-              .map((_, index) => <TrackSkeleton key={index} />)
+              .map((_, index) => <TrackSkeleton key={`skeleton-${index}`} />)
           ) : !user ? (
             <p className="text-gray-400 text-sm sm:text-xs">Войдите, чтобы увидеть рекомендации</p>
           ) : recommendedTracks.length === 0 ? (
@@ -243,7 +248,7 @@ const Recommendations = ({
               return (
                 <div
                   ref={isLast ? lastTrackRef : null}
-                  key={`recommendations-${track.id}`}
+                  key={`recommendations-${track.id}-${offset}-${index}`}
                   className={`bg-neutral-800 p-4 sm:p-2 rounded-lg shadow-md hover:bg-neutral-700 transition cursor-pointer flex flex-col items-center min-w-35 max-w-35 snap-start flex-shrink-0 ${
                     currentTrack?.id === track.id && isPlaying ? "bg-green-700" : ""
                   }`}
