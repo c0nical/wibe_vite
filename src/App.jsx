@@ -391,6 +391,7 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const mobileMenuRef = useRef(null);
   const miniPlayerRef = useRef(null);
 
@@ -433,20 +434,26 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
 
   return (
     <div className="h-screen flex flex-col bg-transparent text-white overflow-hidden">
-      {/* Видео на фоне */}
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="fixed top-0 left-0 w-full h-full object-cover z-[-10]"
-        onError={(e) => console.error("Video error:", e.target.error)}
-        onLoadedData={() => console.log("Video loaded successfully")}
-      >
-        <source src="/videos/bg.webm" type="video/webm" />
-        <source src="/videos/bg.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
+      {/* Чёрная обёртка для видео */}
+      <div className="fixed top-0 left-0 w-full h-full bg-black z-[-10]">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className={`absolute top-0 left-0 w-full h-full object-cover z-[-10] transition-opacity duration-500 ${isVideoLoaded ? "opacity-100" : "opacity-0"}`}
+          poster="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAEPgHY6qu6RQAAAABJRU5ErkJggg=="
+          onError={(e) => console.error("Video error:", e.target.error)}
+          onLoadedData={() => {
+            console.log("Video loaded successfully");
+            setIsVideoLoaded(true);
+          }}
+        >
+          <source src="/videos/bg.webm" type="video/webm" />
+          <source src="/videos/bg.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
 
       <Header setIsMenuOpen={setIsMenuOpen} />
       <div className="flex flex-1 min-h-0 overflow-hidden">
