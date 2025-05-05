@@ -184,7 +184,7 @@ const FeaturedTracks = ({
 
   return (
     <SkeletonTheme baseColor="#4F4F4F" highlightColor="#A6A6A6">
-      <div className="mb-8 bg-neutral-900 p-5 sm:p-3 rounded-lg max-w-full box-border">
+      <div className="mb-8 bg-neutral-700/25 shadow-lg border-white/10 border-1 border-solid p-5 sm:p-3 rounded-lg max-w-full box-border">
         <div className="flex justify-between items-center mb-4 bg-gray-800 p-4 sm:p-2 rounded-lg">
           <h2 className="text-2xl sm:text-lg font-semibold">Избранные треки</h2>
           <div className="flex gap-2 items-center">
@@ -204,7 +204,7 @@ const FeaturedTracks = ({
         </div>
         <div
           ref={scrollRef}
-          className="flex gap-4 sm:gap-2 overflow-x-auto snap-x snap-mandatory p-2 sm:p-1 max-w-full custom-scrollbar"
+          className="flex gap-4 sm:gap-2 overflow-x-auto snap-x snap-mandatory p-2 max-w-full custom-scrollbar"
         >
           {loading && tracks.length === 0
             ? Array(5)
@@ -217,7 +217,7 @@ const FeaturedTracks = ({
                   <div
                     ref={isLast ? lastTrackRef : null}
                     key={`featured-${track.id}`}
-                    className={`bg-neutral-800 p-4 sm:p-2 rounded-lg shadow-md hover:bg-neutral-700 transition cursor-pointer flex flex-col items-center min-w-35 max-w-35 snap-start flex-shrink-0 ${
+                    className={`bg-neutral-800 border-white/10 border-1 p-4 sm:p-2 rounded-lg shadow-md hover:bg-neutral-700 transition cursor-pointer flex flex-col items-center min-w-35 max-w-35 snap-start flex-shrink-0 ${
                       currentTrack?.id === track.id && isPlaying ? "bg-green-700" : ""
                     }`}
                     onClick={() => handleTrackClick(track)}
