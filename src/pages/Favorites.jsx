@@ -111,7 +111,7 @@ const Favorites = ({ setCurrentTrack, setIsPlaying, setCurrentCategoryTracks, sh
               <button
                 key={key}
                 onClick={() => requestSort(key)}
-                className={`px-3 py-1 rounded-full flex items-center gap-1 ${
+                className={`px-3 py-1 rounded-full flex cursor-pointer items-center gap-1 ${
                   sortConfig.key === key ? "bg-neutral-700" : "hover:bg-neutral-800"
                 }`}
               >
@@ -190,7 +190,7 @@ const Favorites = ({ setCurrentTrack, setIsPlaying, setCurrentCategoryTracks, sh
             {sortedFavorites.map((track) => (
               <motion.div
                 key={track.id}
-                className="flex items-center gap-3 p-3 bg-neutral-800 hover:bg-neutral-700 transition rounded-lg"
+                className="flex items-center gap-3 p-3 border-1 border-white/10 bg-neutral-800 cursor-pointer hover:bg-neutral-700 transition rounded-lg"
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handlePlayTrack(track)}
@@ -218,7 +218,7 @@ const Favorites = ({ setCurrentTrack, setIsPlaying, setCurrentCategoryTracks, sh
                     onClick={(e) => handleRemoveFavorite(track.id, e)}
                     className="text-red-500 hover:text-red-400 p-1"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={18} className="cursor-pointer" />
                   </button>
                 </div>
               </motion.div>

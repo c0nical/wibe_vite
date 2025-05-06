@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./pages/Profile";
 import TitlePage from "./pages/TitlePage";
 import Favorites from "./pages/Favorites";
+import MyTracks from "./pages/MyTracks";
 import SearchResults from "./pages/SearchResults";
 import Toast from "./components/Toast";
 import { Search, Menu, Heart, ListPlus, Repeat, X } from "lucide-react";
@@ -81,11 +82,19 @@ const MiniPlayer = ({ currentTrack, isPlaying, setIsPlaying, onOpenFullPlayer, m
       whileTap={{ scale: 0.98 }}
       onClick={onOpenFullPlayer}
     >
-      <img
-        src={currentTrack.album_image}
-        alt={currentTrack.album_name}
-        className="w-15 h-15 object-cover rounded"
-      />
+      {currentTrack.album_image ? (
+        <img
+          src={currentTrack.album_image}
+          alt={currentTrack.album_name || currentTrack.name}
+          className="w-15 h-15 object-cover rounded"
+        />
+      ) : (
+        <div className="w-15 h-15 bg-neutral-700 rounded flex items-center justify-center">
+          <svg className="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M9 16V8l7 4-7 4z" />
+          </svg>
+        </div>
+      )}
       <div className="flex-1">
         <p className="text-xl">{currentTrack.name}</p>
         <p className="text-gray-400">{currentTrack.artist_name}</p>
@@ -211,6 +220,7 @@ const MobilePlayerModal = ({
   if (!currentTrack) return null;
 
   const isFavorite = favorites.some((f) => f.trackId === currentTrack?.id);
+  const isUserTrack = !currentTrack?.album_image; // Проверяем, пользовательский ли трек
 
   return (
     <motion.div
@@ -224,12 +234,18 @@ const MobilePlayerModal = ({
         <div className="relative">
           {isBuffering ? (
             <Skeleton width={128} height={128} borderRadius={8} />
-          ) : (
+          ) : currentTrack.album_image ? (
             <img
               src={currentTrack.album_image}
-              alt={currentTrack.album_name}
+              alt={currentTrack.album_name || currentTrack.name}
               className="w-32 h-32 object-cover rounded-lg mb-4"
             />
+          ) : (
+            <div className="w-32 h-32 bg-neutral-700 rounded-lg mb-4 flex items-center justify-center">
+              <svg className="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M9 16V8l7 4-7 4z" />
+              </svg>
+            </div>
           )}
         </div>
         <div className="mb-2 text-center">
@@ -272,12 +288,14 @@ const MobilePlayerModal = ({
           </button>
         </div>
         <div className="flex gap-4 mt-4">
-          <button
-            onClick={handleFavoriteClick}
-            className={`text-xl text-gray-400 hover:text-white ${isFavorite ? "text-red-500" : ""}`}
-          >
-            <Heart fill={isFavorite ? "red" : "none"} />
-          </button>
+          {!isUserTrack && (
+            <button
+              onClick={handleFavoriteClick}
+              className={`text-xl text-gray-400 hover:text-white ${isFavorite ? "text-red-500" : ""}`}
+            >
+              <Heart fill={isFavorite ? "red" : "none"} />
+            </button>
+          )}
           <div className="relative flex">
             <button
               onClick={() => setShowPlaylistMenu(!showPlaylistMenu)}
@@ -458,7 +476,7 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
       <Header setIsMenuOpen={setIsMenuOpen} />
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {user && (
-          <aside className="hidden md:block w-64 bg-[#2E2E2E] h-full flex-shrink-0 overflow-y-auto relative">
+          <aside className="hidden md:block w-64 bg-[#2E2E2E] mt-5 ml-5 h-full flex-shrink-0 height-screen rounded-lg border-1 border-white/10 overflow-y-auto relative">
             <nav className="p-4 relative">
               <div
                 className="absolute bg-neutral-600 transition-all duration-300 rounded"
@@ -474,6 +492,7 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
                 { path: "/home", label: "Главная" },
                 { path: "/library", label: "Библиотека" },
                 { path: "/favorites", label: "Избранное" },
+                { path: "/mytracks", label: "Свои треки" },
               ].map((item, index) => (
                 <Link
                   key={index}
@@ -511,6 +530,7 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
               <Route path="/library" element={<Library setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/favorites" element={<Favorites setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
+              <Route path="/mytracks" element={<MyTracks setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
               <Route path="/search" element={<SearchResults setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
             </Route>
           </Routes>
@@ -578,6 +598,7 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
                 { path: "/home", label: "Главная" },
                 { path: "/library", label: "Библиотека" },
                 { path: "/favorites", label: "Избранное" },
+                { path: "/mytracks", label: "Свои треки" },
                 { path: "/profile", label: "Профиль" },
               ].map((item, index) => (
                 <Link

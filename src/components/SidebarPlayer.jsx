@@ -162,6 +162,7 @@ const SidebarPlayer = ({
   };
 
   const isFavorite = favorites.some((f) => f.trackId === currentTrack?.id);
+  const isUserTrack = !currentTrack?.album_image; // Проверяем, пользовательский ли трек
 
   return (
     <div className="bg-[#272727] p-8 flex flex-col items-center">
@@ -253,14 +254,18 @@ const SidebarPlayer = ({
           <div className="relative">
             {isBuffering ? (
               <Skeleton width={128} height={128} borderRadius={8} />
+            ) : currentTrack.album_image ? (
+              <img
+                src={currentTrack.album_image}
+                alt={currentTrack.album_name || currentTrack.name}
+                className="w-32 h-32 object-cover rounded-lg mb-4"
+              />
             ) : (
-              currentTrack.album_image && (
-                <img
-                  src={currentTrack.album_image}
-                  alt={currentTrack.album_name}
-                  className="w-32 h-32 object-cover rounded-lg mb-4"
-                />
-              )
+              <div className="w-32 h-32 bg-neutral-700 rounded-lg mb-4 flex items-center justify-center">
+                <svg className="w-12 h-12 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M9 16V8l7 4-7 4z" />
+                </svg>
+              </div>
             )}
           </div>
 
@@ -341,12 +346,14 @@ const SidebarPlayer = ({
           </div>
 
           <div className="flex gap-4 mt-4">
-            <button
-              onClick={handleFavoriteClick}
-              className={`text-xl text-gray-400 hover:text-white ${isFavorite ? "text-red-500" : ""}`}
-            >
-              <Heart fill={isFavorite ? "red" : "none"} />
-            </button>
+            {!isUserTrack && (
+              <button
+                onClick={handleFavoriteClick}
+                className={`text-xl text-gray-400 hover:text-white ${isFavorite ? "text-red-500" : ""}`}
+              >
+                <Heart fill={isFavorite ? "red" : "none"} />
+              </button>
+            )}
             <div className="flex relative">
               <button
                 onClick={() => setShowPlaylistMenu(!showPlaylistMenu)}

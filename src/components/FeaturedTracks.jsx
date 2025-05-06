@@ -185,18 +185,18 @@ const FeaturedTracks = ({
   return (
     <SkeletonTheme baseColor="#4F4F4F" highlightColor="#A6A6A6">
       <div className="mb-8 bg-neutral-700/25 shadow-lg border-white/10 border-1 border-solid p-5 sm:p-3 rounded-lg max-w-full box-border">
-        <div className="flex justify-between items-center mb-4 bg-gray-800 p-4 sm:p-2 rounded-lg">
+        <div className="flex justify-between items-center mb-4 bg-neutral-600 p-4 sm:p-2 rounded-lg">
           <h2 className="text-2xl sm:text-lg font-semibold">Избранные треки</h2>
           <div className="flex gap-2 items-center">
             <button
               onClick={() => handleScroll(-1)}
-              className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center bg-inherit border-2 border-solid border-gray-600 rounded hover:bg-gray-600"
+              className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center bg-inherit border-2 border-solid border-neutral-500 rounded hover:bg-neutral-400 cursor-pointer"
             >
               <ChevronLeft size={24} className="sm:w-5 sm:h-5" />
             </button>
             <button
               onClick={() => handleScroll(1)}
-              className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center bg-inherit border-2 border-solid border-gray-600 rounded hover:bg-gray-600"
+              className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center bg-inherit border-2 border-solid border-neutral-500 rounded hover:bg-neutral-400 cursor-pointer"
             >
               <ChevronRight size={24} className="sm:w-5 sm:h-5" />
             </button>
