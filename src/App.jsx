@@ -32,7 +32,7 @@ function Loader() {
       transition={{ duration: 0.5 }}
     >
       <motion.div
-        className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full"
+        className="w-16 h-16 border-4 border-white border-t-transparent rounded-full"
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
       />
@@ -55,7 +55,7 @@ class ErrorBoundary extends React.Component {
             <h1 className="text-2xl mb-4">Что-то пошло не так 😔</h1>
             <p>{this.state.error?.message || "Неизвестная ошибка"}</p>
             <button
-              className="mt-4 bg-green-500 px-4 py-2 rounded hover:bg-green-600"
+              className="mt-4 bg-white px-4 py-2 rounded hover:bg-neutral-200"
               onClick={() => window.location.reload()}
             >
               Перезагрузить
@@ -220,7 +220,7 @@ const MobilePlayerModal = ({
   if (!currentTrack) return null;
 
   const isFavorite = favorites.some((f) => f.trackId === currentTrack?.id);
-  const isUserTrack = !currentTrack?.album_image; // Проверяем, пользовательский ли трек
+  const isUserTrack = !currentTrack?.album_image;
 
   return (
     <motion.div
@@ -358,7 +358,7 @@ const Header = ({ setIsMenuOpen }) => {
   return (
     <header className="flex justify-between items-center bg-[#0F0F0F] p-4 shadow-md relative">
       <div className="flex items-center gap-8 w-full">
-        <img src="/assets/img/logo/logo.svg" onClick={() => navigate("/")} className="w-12 cursor-pointer" alt="Logo" />
+        <img src="/assets/img/logo/logo.svg" onClick={() => navigate("/")} className="w-12 cursor-pointer" alt ZE="Logo" />
         <div className="relative flex-1 max-w-[600px]">
           <input
             type="text"
@@ -370,7 +370,7 @@ const Header = ({ setIsMenuOpen }) => {
           />
           <button
             onClick={handleSearch}
-            className="absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400 hover:text-green-500"
+            className="absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400 hover:text-white"
           >
             <Search size={18} />
           </button>
@@ -402,14 +402,13 @@ const Header = ({ setIsMenuOpen }) => {
   );
 };
 
-const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlaying, playNextTrack, playPreviousTrack, setCurrentCategoryTracks, playedTime, setPlayedTime, duration, setDuration, handleProgressBarClick, playerRef, showToast, isLooping, setIsLooping }) => {
+const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlaying, playNextTrack, playPreviousTrack, setCurrentCategoryTracks, playedTime, setPlayedTime, duration, setDuration, handleProgressBarClick, playerRef, showToast, isLooping, setIsLooping, backgroundColor, setBackgroundColor }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [hoverPos, setHoverPos] = useState({ top: 0, isVisible: false });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const mobileMenuRef = useRef(null);
   const miniPlayerRef = useRef(null);
 
@@ -452,25 +451,30 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
 
   return (
     <div className="h-screen flex flex-col bg-transparent text-white overflow-hidden">
-      {/* Чёрная обёртка для видео */}
-      <div className="fixed top-0 left-0 w-full h-full bg-black z-[-10]">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className={`absolute top-0 left-0 w-full h-full object-cover z-[-10] transition-opacity duration-500 ${isVideoLoaded ? "opacity-100" : "opacity-0"}`}
-          poster="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAEPgHY6qu6RQAAAABJRU5ErkJggg=="
-          onError={(e) => console.error("Video error:", e.target.error)}
-          onLoadedData={() => {
-            console.log("Video loaded successfully");
-            setIsVideoLoaded(true);
-          }}
-        >
-          <source src="/videos/bg.webm" type="video/webm" />
-          <source src="/videos/bg.mp4" type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
+      {/* Фон: видео или сплошной цвет */}
+      <div className="fixed top-0 left-0 w-full h-full z-[-10]">
+        {backgroundColor ? (
+          <div
+            className="absolute top-0 left-0 w-full h-full transition-colors duration-500"
+            style={{ backgroundColor }}
+          />
+        ) : (
+          <div className="absolute top-0 left-0 w-full h-full bg-black">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute top-0 left-0 w-full h-full object-cover"
+              onError={(e) => console.error("Video failed to load:", e.target.error)}
+              onLoadedData={() => console.log("Video loaded successfully")}
+            >
+              <source src="/videos/bg.webm" type="video/webm" />
+              <source src="/videos/bg.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        )}
       </div>
 
       <Header setIsMenuOpen={setIsMenuOpen} />
@@ -528,7 +532,15 @@ const AppLayout = ({ user, currentTrack, setCurrentTrack, isPlaying, setIsPlayin
             <Route element={<ProtectedRoute user={user} />}>
               <Route path="/home" element={<Home setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
               <Route path="/library" element={<Library setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
-              <Route path="/profile" element={<Profile />} />
+              <Route
+                path="/profile"
+                element={
+                  <Profile
+                    backgroundColor={backgroundColor}
+                    setBackgroundColor={setBackgroundColor}
+                  />
+                }
+              />
               <Route path="/favorites" element={<Favorites setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
               <Route path="/mytracks" element={<MyTracks setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
               <Route path="/search" element={<SearchResults setCurrentTrack={setCurrentTrack} setIsPlaying={setIsPlaying} setCurrentCategoryTracks={setCurrentCategoryTracks} showToast={showToast} />} />
@@ -628,11 +640,21 @@ function App() {
   const [user, loading] = useAuthState(auth);
   const [toast, setToast] = useState({ message: "", isVisible: false });
   const playerRef = useRef(null);
+  const [backgroundColor, setBackgroundColor] = useState(() => {
+    const storedColor = localStorage.getItem("backgroundColor");
+    console.log("Initial backgroundColor from localStorage:", storedColor);
+    return storedColor && storedColor !== "" ? storedColor : null;
+  });
 
   const showToast = useCallback((message) => {
     setToast({ message, isVisible: true });
     setTimeout(() => setToast({ message: "", isVisible: false }), 3000);
   }, []);
+
+  useEffect(() => {
+    console.log("Saving backgroundColor to localStorage:", backgroundColor);
+    localStorage.setItem("backgroundColor", backgroundColor || "");
+  }, [backgroundColor]);
 
   const handleProgressBarClick = (e, playerRef) => {
     const progressBar = e.currentTarget;
@@ -714,6 +736,8 @@ function App() {
                 showToast={showToast}
                 isLooping={isLooping}
                 setIsLooping={setIsLooping}
+                backgroundColor={backgroundColor}
+                setBackgroundColor={setBackgroundColor}
               />
             }
           />

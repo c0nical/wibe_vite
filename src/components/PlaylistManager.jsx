@@ -102,11 +102,11 @@ const PlaylistManager = ({ setCurrentTrack, setIsPlaying, setCurrentCategoryTrac
           value={newPlaylistName}
           onChange={(e) => setNewPlaylistName(e.target.value)}
           placeholder="Название плейлиста"
-          className="flex-1 p-2 bg-neutral-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="flex-1 p-2 bg-neutral-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-white"
         />
         <motion.button
           onClick={handleCreatePlaylist}
-          className="p-2 bg-green-500 text-white rounded hover:bg-green-600"
+          className="p-2 bg-white text-black rounded hover:bg-neutral-200"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -135,7 +135,7 @@ const PlaylistManager = ({ setCurrentTrack, setIsPlaying, setCurrentCategoryTrac
                       e.stopPropagation();
                       playPlaylist(playlist);
                     }}
-                    className="p-2 text-gray-400 hover:text-green-500"
+                    className="p-2 text-gray-400 hover:text-white"
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                   >

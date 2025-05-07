@@ -6,8 +6,9 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import gravatarUrl from "gravatar-url";
 import { motion } from "framer-motion";
+import { Video, Palette } from "lucide-react";
 
-const Profile = () => {
+const Profile = ({ backgroundColor, setBackgroundColor }) => {
   const navigate = useNavigate();
   const [user, loading] = useAuthState(auth);
   const [displayName, setDisplayName] = useState("");
@@ -46,6 +47,20 @@ const Profile = () => {
     } catch (error) {
       console.error("Ошибка обновления имени:", error.message);
     }
+  };
+
+  const toggleBackground = () => {
+    console.log("Toggling background, current backgroundColor:", backgroundColor);
+    if (backgroundColor) {
+      setBackgroundColor(null); // Включаем видео
+    } else {
+      setBackgroundColor("#1C1C1C"); // Отключаем видео, ставим дефолтный цвет
+    }
+  };
+
+  const handleColorChange = (e) => {
+    console.log("Color changed to:", e.target.value);
+    setBackgroundColor(e.target.value);
   };
 
   if (loading) {
@@ -97,12 +112,40 @@ const Profile = () => {
         />
         <motion.button
           onClick={handleUpdateName}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          className="bg-white text-black px-4 py-2 rounded hover:bg-neutral-200"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
           Сохранить
         </motion.button>
+      </div>
+      <div className="bg-neutral-700 p-4 rounded-lg mb-6">
+        <h3 className="text-lg font-semibold mb-2">Настройки фона</h3>
+        <div className="flex flex-col gap-4">
+          <motion.button
+            onClick={toggleBackground}
+            className="bg-white text-black px-4 py-2 rounded hover:bg-neutral-200 flex items-center gap-2"
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+          >
+            {backgroundColor ? <Video size={18} /> : <Palette size={18} />}
+            {backgroundColor ? "Включить видео" : "Отключить видео"}
+          </motion.button>
+          {backgroundColor && (
+            <div className="flex items-center gap-4">
+              <label htmlFor="backgroundColor" className="text-neutral-300">
+                Выбрать цвет фона:
+              </label>
+              <input
+                id="backgroundColor"
+                type="color"
+                value={backgroundColor}
+                onChange={handleColorChange}
+                className="p-1 bg-neutral-600 rounded"
+              />
+            </div>
+          )}
+        </div>
       </div>
       <motion.button
         onClick={handleLogout}
@@ -110,7 +153,7 @@ const Profile = () => {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
-        Выйти
+        Выйти из аккаунта
       </motion.button>
     </motion.div>
   );
